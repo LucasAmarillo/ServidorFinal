@@ -3,8 +3,7 @@ import threading
 import json
 import sqlite3
 
-class ServidorChat:
-    
+class ServidorChat:    
     def __init__(self, host='0.0.0.0', puerto=5000):
         self.servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.servidor.bind((host, puerto))
@@ -12,7 +11,6 @@ class ServidorChat:
         self.clientes = []
         self.nombres_usuarios = {}
         print(f"Servidor funcionando en {host}:{puerto}")
-        self.crear_base_de_datos() # LUCAS
     
     def crear_base_de_datos(self):
         conexion = sqlite3.connect('usuarios.db')
@@ -23,7 +21,6 @@ class ServidorChat:
             nombre_usuario TEXT NOT NULL,
             contrasena TEXT NOT NULL
         )''')
-
 
     def autenticar_usuario(self, datos):
         
@@ -94,7 +91,7 @@ class ServidorChat:
                         datos['destino'] = self.nombres_usuarios[datos['origen']]
                         self.nombres_usuarios[datos['origen']].sendall(json.dumps(datos).encode('utf-8'))
                 except:
-                    print("entro aca")
+                    print("Error al enviar mensaje privado.")
 
 
     def eliminar(self, socket_cliente):
