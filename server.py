@@ -3,7 +3,7 @@ import threading
 import json
 import sqlite3
 
-class ServidorChat:    
+class ServidorChat:
     def __init__(self, host='0.0.0.0', puerto=5000):
         self.servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.servidor.bind((host, puerto))
@@ -11,21 +11,38 @@ class ServidorChat:
         self.clientes = []
         self.nombres_usuarios = {}
         print(f"Servidor funcionando en {host}:{puerto}")
-    
-    def crear_base_de_datos(self):
+
+    # Creacion de tabla usuarios
+
+    def crear_tabla_usuarios(self):
+        try:
+            with sqlite3.connect('usuarios.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute('''CREATE TABLE IF NOT EXISTS usuarios
+                                (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                nombre_usuario TEXT UNIQUE NOT NULL,
+                                contrasena TEXT NOT NULL)''')
+                conn.commit()
+        except Exception as e:
+            print(f"Error al crear la tabla 'usuarios': {e}")
+
+    def autenticar_usuario(self, datos):
         conexion = sqlite3.connect('usuarios.db')
         cursor = conexion.cursor()
         
-        cursor.execute('''CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY,
-            nombre_usuario TEXT NOT NULL,
-            contrasena TEXT NOT NULL
-        )''')
-
-    def autenticar_usuario(self, datos):
-        
         cursor.execute("SELECT * FROM usuarios WHERE nombre_usuario = ? AND contrasena = ?", (datos['nombre_usuario'], datos['contrasena']))
         usuario = cursor.fetchone()
+        
+        conexion.close()
+        return usuario is not None
+
+ 
+    def registrar(self,datos):
+        conexion = sqlite3.connect('usuarios.db')
+        cursor = conexion.cursor()
+        
+        cursor.execute("INSERT INTO usuarios (nombre_usuario,contrasena) values (?,?)", (datos['nombre_usuario'], datos['contrasena']))
+        conexion.commit()
         
         conexion.close()
         return usuario is not None
@@ -41,12 +58,20 @@ class ServidorChat:
                             socket_cliente.sendall(json.dumps({"tipo": "login", "estado": "exitoso"}).encode('utf-8'))
                             self.nombres_usuarios[socket_cliente] = datos['nombre_usuario']
                             self.clientes.append(socket_cliente)
+                            self.enviar_usuarios_conectados()
                             threading.Thread(target=self.escuchar_mensajes, args=(socket_cliente,)).start()
                             return
                         else:
                             socket_cliente.sendall(json.dumps({"tipo": "login", "estado": "fallido"}).encode('utf-8'))
                             socket_cliente.close()
                             return
+                    elif datos['tipo'] == 'registrar':
+                        if self.registrar(datos):
+                            socket_cliente.sendall(json.dumps({"tipo": "registro", "estado": "exitoso"}).encode('utf-8'))
+                        else:
+                            socket_cliente.sendall(json.dumps({"tipo": "registro", "estado": "fallido"}).encode('utf-8'))
+
+
             except:
                 continue
 
@@ -93,14 +118,25 @@ class ServidorChat:
                 except:
                     print("Error al enviar mensaje privado.")
 
-
     def eliminar(self, socket_cliente):
         if socket_cliente in self.clientes:
             self.clientes.remove(socket_cliente)
             if socket_cliente in self.nombres_usuarios:
                 print(f"{self.nombres_usuarios[socket_cliente]} se ha desconectado.")
                 del self.nombres_usuarios[socket_cliente]
-            #socket_cliente.close() funciona sin esto
+                self.enviar_usuarios_conectados()  # Enviar la lista de usuarios actualizada
+
+    def enviar_usuarios_conectados(self):
+        usuarios = list(self.nombres_usuarios.values())
+        mensaje = {
+            "tipo": "usuarios",
+            "usuarios": usuarios
+        }
+        for cliente in self.clientes:
+            try:
+                cliente.sendall(json.dumps(mensaje).encode('utf-8'))
+            except:
+                self.eliminar(cliente)
 
     def correr(self):
         while True:
@@ -110,4 +146,5 @@ class ServidorChat:
 
 if __name__ == "__main__":
     servidor = ServidorChat()
+    servidor.crear_tabla_usuarios()
     servidor.correr()

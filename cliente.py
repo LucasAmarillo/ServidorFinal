@@ -2,10 +2,12 @@ import socket
 import threading
 import json
 import tkinter as tk
-from tkinter import simpledialog, messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext
+from PIL import Image, ImageTk
 
 class ClienteChat:
-    def __init__(self, host='127.0.0.1', puerto=12345):
+    #def __init__(self, host='127.0.0.1', puerto=5000):
+    def __init__(self, host='127.0.0.1', puerto=5000):
         self.host = host
         self.puerto = puerto
         self.cliente = None
@@ -13,59 +15,60 @@ class ClienteChat:
 
         self.ventana = tk.Tk()
         self.ventana.title("Chat Cliente")
-        ancho = 690
-        alto = 420
+        ancho = 800
+        alto = 600
         x = self.ventana.winfo_screenwidth() // 2 - ancho // 2
         y = self.ventana.winfo_screenheight() // 2 - alto // 2
         self.ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
 
-        self.entry_mensaje.bind("<Return>", lambda event: self.enviar_mensaje_enter(event))
-
         self.frame_login = tk.Frame(self.ventana)
 
-        self.logo = tk.PhotoImage(file="logo.png")
-        self.label_logo = tk.Label(self.frame_login, image=self.logo)
-        self.label_logo.pack(pady=15,ipady=10)
+        imagen = Image.open("logo.png")
+        self.logo_portada = ImageTk.PhotoImage(imagen)
+        self.lblImagen = tk.Label(self.frame_login, image=self.logo_portada)
+        self.lblImagen.pack(pady=50)
 
         self.label_usuario = tk.Label(self.frame_login, text="Usuario:")
+        #self.label_usuario.pack(side=tk.LEFT)
         self.label_usuario.pack()
-        self.entry_usuario = tk.Entry(self.frame_login, width=40)
-        self.entry_usuario.pack(pady=5,ipady=5)
+        self.entry_usuario = tk.Entry(self.frame_login, width=30)
+        #self.entry_usuario.pack(side=tk.LEFT)
+        self.entry_usuario.pack()
         self.label_contrasena = tk.Label(self.frame_login, text="Contraseña:")
+        #self.label_contrasena.pack(side=tk.LEFT)
         self.label_contrasena.pack()
-        self.entry_contrasena = tk.Entry(self.frame_login, show="*", width=40)
-        self.entry_contrasena.pack(pady=5,ipady=5)
-        # BOTON
-        self.boton_login = tk.Button(self.frame_login, text="Login", command=self.enviar_credenciales, width=20, height=4)
-        self.boton_login.pack(pady=15,ipady=10)
+        self.entry_contrasena = tk.Entry(self.frame_login, width=30, show="*")
+        #self.entry_contrasena.pack(side=tk.LEFT)
+        self.entry_contrasena.pack()
+        self.boton_login = tk.Button(self.frame_login, text="Ingresar", width=20, height=2, command=self.enviar_credenciales)
+        #self.boton_login.pack(side=tk.LEFT)
+        self.boton_login.pack(pady=10)
+        
+        # Registrar Usuario
+        self.boton_register = tk.Button(self.frame_login, text="Registrar", width=20, height=2, command=self.registrar)
+        #self.boton_login.pack(side=tk.LEFT)
+        self.boton_register.pack(pady=10)
         self.frame_login.pack()
 
         self.frame_chat = tk.Frame(self.ventana)
         self.chat_texto = scrolledtext.ScrolledText(self.frame_chat, state='disabled')
-        self.chat_texto.pack()
+        self.chat_texto.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        self.entry_mensaje = tk.Entry(self.frame_chat)
+        self.frame_mensaje = tk.Frame(self.frame_chat)
+        self.entry_mensaje = tk.Entry(self.frame_mensaje)
         self.entry_mensaje.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.boton_enviar = tk.Button(self.frame_chat, text="Enviar", command=self.enviar_mensaje)
+        self.boton_enviar = tk.Button(self.frame_mensaje, text="Enviar", command=self.enviar_mensaje)
         self.boton_enviar.pack(side=tk.LEFT)
+        self.frame_mensaje.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.frame_usuarios = tk.Frame(self.ventana,pady=10, padx=10)
+        self.lista_usuarios = tk.Listbox(self.frame_usuarios,)
+        self.lista_usuarios.pack(fill=tk.BOTH, expand=True)
+        self.label_usuarios = tk.Label(self.frame_usuarios, text="Usuarios Conectados:")
+        self.label_usuarios.pack()
 
         self.frame_chat.pack_forget()  # Esconde el frame del chat hasta que el login sea exitoso
 
-    def enviar_mensaje_enter(self, event):
-        self.enviar_mensaje()
-        self.entry_mensaje.focus_set()
-
-    def enviar_mensaje(self):
-        if self.cliente and self.login_exitoso:
-            datos = {
-                "destinatario": self.entry_destinatario.get(),
-                "mensaje": self.entry_mensaje.get()
-            }
-            self.cliente.sendall(json.dumps(datos).encode('utf-8'))
-            self.chat_texto.config(state='normal')
-            self.chat_texto.insert(tk.END, f"Tu: {self.entry_mensaje.get()}\n")
-            self.chat_texto.config(state='disabled')
-            self.entry_mensaje.delete(0, tk.END)
     def conectar(self):
         if self.cliente:
             self.cliente.close()
@@ -77,6 +80,15 @@ class ClienteChat:
         self.conectar()  # Reconectar el socket
         datos = {
             "tipo": "login",
+            "nombre_usuario": self.entry_usuario.get().lower(),
+            "contrasena": self.entry_contrasena.get()
+        }
+        self.cliente.sendall(json.dumps(datos).encode('utf-8'))
+    
+    def registrar(self):
+        self.conectar()  # Reconectar el socket
+        datos = {
+            "tipo": "registrar",
             "nombre_usuario": self.entry_usuario.get(),
             "contrasena": self.entry_contrasena.get()
         }
@@ -92,14 +104,17 @@ class ClienteChat:
                         if datos['estado'] == 'exitoso':
                             self.login_exitoso = True
                             self.frame_login.pack_forget()
-                            self.frame_chat.pack(pady=5)
+                            self.frame_chat.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
                             self.chat_texto.config(state='normal')
                             self.chat_texto.insert(tk.END, "Inicio de sesión exitoso.\n")
                             self.chat_texto.config(state='disabled')
+                            self.frame_usuarios.pack(side=tk.RIGHT, fill=tk.Y)
                         else:
                             messagebox.showerror("Error", "Inicio de sesión fallido. Credenciales incorrectas.")
                             self.cliente.close()
                             break
+                    elif datos['tipo'] == 'usuarios':
+                        self.actualizar_lista_usuarios(datos['usuarios'])
                     elif datos['tipo'] == 'privado':
                         self.chat_texto.config(state='normal')
                         self.chat_texto.insert(tk.END, f"Privado de {datos['origen']}: {datos['mensaje']}\n")
@@ -110,32 +125,33 @@ class ClienteChat:
                         self.chat_texto.config(state='disabled')
             except ConnectionError as e:
                 print(f"Error de conexión: {e}")
-                # self.eliminar(self.socket_cliente)
                 break
             except json.JSONDecodeError as e:
                 print(f"Error al decodificar JSON: {e}")
-                # self.eliminar(self.socket_cliente)
                 break
-
 
     def enviar_mensaje(self):
         if not self.login_exitoso:
             messagebox.showwarning("Advertencia", "No se puede enviar el mensaje. Inicio de sesión no exitoso.")
             return
-        
+
         mensaje = self.entry_mensaje.get()
-        # if mensaje.startswith("/privado"):
-        if mensaje.startswith("//"):
+        if mensaje.startswith("@"):
             try:
-                _, destino, mensaje_privado = mensaje.split(" ", 2)
+                destino, mensaje_privado = mensaje[1:].split(" ", 1)
                 datos = {
                     "tipo": "privado",
                     "origen": self.entry_usuario.get(),
                     "destino": destino,
                     "mensaje": mensaje_privado
                 }
+
+                # Mostrar el mensaje en el chat local sin el destinatario
+                self.chat_texto.config(state='normal')
+                self.chat_texto.insert(tk.END, f"Tú (privado): {mensaje_privado}\n")
+                self.chat_texto.config(state='disabled')
             except ValueError:
-                messagebox.showwarning("Advertencia", "Formato incorrecto. Usa: /privado usuario_destino mensaje")
+                messagebox.showwarning("Advertencia", "Formato incorrecto. Usa: @usuario_destino mensaje")
                 return
         else:
             datos = {
@@ -143,33 +159,24 @@ class ClienteChat:
                 "origen": self.entry_usuario.get(),
                 "mensaje": mensaje
             }
-        
+
+            # Mostrar el mensaje en el chat local
+            self.chat_texto.config(state='normal')
+            self.chat_texto.insert(tk.END, f"Tú: {mensaje}\n")
+            self.chat_texto.config(state='disabled')
+
         # Enviar el mensaje al servidor
         self.cliente.sendall(json.dumps(datos).encode('utf-8'))
 
-        # Mostrar el mensaje en el chat local
-        self.chat_texto.config(state='normal')
-        self.chat_texto.insert(tk.END, f"Tú: {mensaje}\n")
-        self.chat_texto.config(state='disabled')
-        
         # Limpiar el campo de entrada de mensaje
         self.entry_mensaje.delete(0, tk.END)
 
-    def desconectar(self):
-        if self.cliente:
-            try:
-                datos = {
-                    "tipo": "desconectar",
-                    "origen": self.entry_usuario.get()
-                }
-                self.cliente.sendall(json.dumps(datos).encode('utf-8'))
-            except:
-                pass
-            self.cliente.close()
-        self.ventana.quit()
+    def actualizar_lista_usuarios(self, usuarios):
+        self.lista_usuarios.delete(0, tk.END)
+        for usuario in usuarios:
+            self.lista_usuarios.insert(tk.END, usuario)
 
     def iniciar(self):
-        self.ventana.protocol("WM_DELETE_WINDOW", self.desconectar)
         self.ventana.mainloop()
 
 if __name__ == "__main__":
