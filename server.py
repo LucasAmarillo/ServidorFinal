@@ -128,15 +128,19 @@ class ServidorChat:
 
     def enviar_usuarios_conectados(self):
         usuarios = list(self.nombres_usuarios.values())
+        contador = len(usuarios)
         mensaje = {
             "tipo": "usuarios",
-            "usuarios": usuarios
+            "usuarios": usuarios,
+            "cantidad":contador
         }
         for cliente in self.clientes:
             try:
+                contador +=1
                 cliente.sendall(json.dumps(mensaje).encode('utf-8'))
             except:
                 self.eliminar(cliente)
+            
 
     def correr(self):
         while True:

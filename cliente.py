@@ -6,7 +6,6 @@ from tkinter import messagebox, scrolledtext
 from PIL import Image, ImageTk
 
 class ClienteChat:
-    #def __init__(self, host='127.0.0.1', puerto=5000):
     def __init__(self, host='127.0.0.1', puerto=5000):
         self.host = host
         self.puerto = puerto
@@ -15,7 +14,7 @@ class ClienteChat:
 
         self.ventana = tk.Tk()
         self.ventana.title("Chat Cliente")
-        ancho = 800
+        ancho = 900
         alto = 600
         x = self.ventana.winfo_screenwidth() // 2 - ancho // 2
         y = self.ventana.winfo_screenheight() // 2 - alto // 2
@@ -29,24 +28,18 @@ class ClienteChat:
         self.lblImagen.pack(pady=50)
 
         self.label_usuario = tk.Label(self.frame_login, text="Usuario:")
-        #self.label_usuario.pack(side=tk.LEFT)
         self.label_usuario.pack()
         self.entry_usuario = tk.Entry(self.frame_login, width=30)
-        #self.entry_usuario.pack(side=tk.LEFT)
         self.entry_usuario.pack()
         self.label_contrasena = tk.Label(self.frame_login, text="Contraseña:")
-        #self.label_contrasena.pack(side=tk.LEFT)
         self.label_contrasena.pack()
         self.entry_contrasena = tk.Entry(self.frame_login, width=30, show="*")
-        #self.entry_contrasena.pack(side=tk.LEFT)
         self.entry_contrasena.pack()
         self.boton_login = tk.Button(self.frame_login, text="Ingresar", width=20, height=2, command=self.enviar_credenciales)
-        #self.boton_login.pack(side=tk.LEFT)
         self.boton_login.pack(pady=10)
         
-        # Registrar Usuario
+        # Botón para registrar usuario
         self.boton_register = tk.Button(self.frame_login, text="Registrar", width=20, height=2, command=self.registrar)
-        #self.boton_login.pack(side=tk.LEFT)
         self.boton_register.pack(pady=10)
         self.frame_login.pack()
 
@@ -61,11 +54,13 @@ class ClienteChat:
         self.boton_enviar.pack(side=tk.LEFT)
         self.frame_mensaje.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.frame_usuarios = tk.Frame(self.ventana,pady=10, padx=10)
-        self.lista_usuarios = tk.Listbox(self.frame_usuarios,)
+        self.frame_usuarios = tk.Frame(self.ventana, pady=10, padx=10)
+        self.lista_usuarios = tk.Listbox(self.frame_usuarios)
         self.lista_usuarios.pack(fill=tk.BOTH, expand=True)
-        self.label_usuarios = tk.Label(self.frame_usuarios, text="Usuarios Conectados:")
+        self.label_usuarios = tk.Label(self.frame_usuarios, text=f"Usuarios Conectados:")
         self.label_usuarios.pack()
+        self.label_cantidad_usuarios = tk.Label(self.frame_usuarios, text="")
+        self.label_cantidad_usuarios.pack()
 
         self.frame_chat.pack_forget()  # Esconde el frame del chat hasta que el login sea exitoso
 
@@ -100,6 +95,7 @@ class ClienteChat:
                 mensaje = self.cliente.recv(1024).decode('utf-8')
                 if mensaje:
                     datos = json.loads(mensaje)
+                    print(f"Recibido: {datos}")
                     if datos['tipo'] == 'login':
                         if datos['estado'] == 'exitoso':
                             self.login_exitoso = True
@@ -115,6 +111,8 @@ class ClienteChat:
                             break
                     elif datos['tipo'] == 'usuarios':
                         self.actualizar_lista_usuarios(datos['usuarios'])
+                        self.label_usuarios.config(text=f"Usuarios Conectados: {datos['cantidad']}")
+                        
                     elif datos['tipo'] == 'privado':
                         self.chat_texto.config(state='normal')
                         self.chat_texto.insert(tk.END, f"Privado de {datos['origen']}: {datos['mensaje']}\n")
@@ -123,6 +121,7 @@ class ClienteChat:
                         self.chat_texto.config(state='normal')
                         self.chat_texto.insert(tk.END, f"{datos['origen']}: {datos['mensaje']}\n")
                         self.chat_texto.config(state='disabled')
+
             except ConnectionError as e:
                 print(f"Error de conexión: {e}")
                 break
@@ -175,6 +174,9 @@ class ClienteChat:
         self.lista_usuarios.delete(0, tk.END)
         for usuario in usuarios:
             self.lista_usuarios.insert(tk.END, usuario)
+
+        # # Actualizar la etiqueta de cantidad de usuarios
+        # self.label_cantidad_usuarios.config(text=f"Usuarios Conectados: {datos['cantidad']}")
 
     def iniciar(self):
         self.ventana.mainloop()
