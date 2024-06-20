@@ -14,6 +14,8 @@ class ClienteChat:
 
         self.ventana = tk.Tk()
         self.ventana.title("Chat Cliente")
+        self.ventana.iconbitmap("logo.ico")
+        self.ventana.resizable(False, False)
         ancho = 900
         alto = 600
         x = self.ventana.winfo_screenwidth() // 2 - ancho // 2
@@ -30,6 +32,7 @@ class ClienteChat:
         self.label_usuario = tk.Label(self.frame_login, text="Usuario:")
         self.label_usuario.pack()
         self.entry_usuario = tk.Entry(self.frame_login, width=30)
+        self.entry_usuario.focus_set()
         self.entry_usuario.pack()
         self.label_contrasena = tk.Label(self.frame_login, text="Contraseña:")
         self.label_contrasena.pack()
@@ -37,7 +40,7 @@ class ClienteChat:
         self.entry_contrasena.pack()
         self.boton_login = tk.Button(self.frame_login, text="Ingresar", width=20, height=2, command=self.enviar_credenciales)
         self.boton_login.pack(pady=10)
-        
+        self.entry_contrasena.bind("<Return>", lambda event: self.enviar_credenciales())
         # Botón para registrar usuario
         self.boton_register = tk.Button(self.frame_login, text="Registrar", width=20, height=2, command=self.registrar)
         self.boton_register.pack(pady=10)
@@ -98,7 +101,10 @@ class ClienteChat:
                     print(f"Recibido: {datos}")
                     if datos['tipo'] == 'login':
                         if datos['estado'] == 'exitoso':
+                            self.ventana.title(f"Chat Cliente - Iniciado como {datos['nombre']}")
                             self.login_exitoso = True
+                            self.entry_mensaje.focus_set()
+                            self.entry_mensaje.bind("<Return>", lambda event: self.enviar_mensaje())
                             self.frame_login.pack_forget()
                             self.frame_chat.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
                             self.chat_texto.config(state='normal')
@@ -115,7 +121,8 @@ class ClienteChat:
                         
                     elif datos['tipo'] == 'privado':
                         self.chat_texto.config(state='normal')
-                        self.chat_texto.insert(tk.END, f"Privado de {datos['origen']}: {datos['mensaje']}\n")
+                        self.chat_texto.insert(tk.END, f"Privado de {datos['origen']}: {datos['mensaje']}\n", 'rojo')
+                        self.chat_texto.tag_config('rojo', foreground='red')
                         self.chat_texto.config(state='disabled')
                     else:
                         self.chat_texto.config(state='normal')
@@ -147,7 +154,8 @@ class ClienteChat:
 
                 # Mostrar el mensaje en el chat local sin el destinatario
                 self.chat_texto.config(state='normal')
-                self.chat_texto.insert(tk.END, f"Tú (privado): {mensaje_privado}\n")
+                self.chat_texto.insert(tk.END, f"Tú (privado): {mensaje_privado}\n", 'rojo')
+                self.chat_texto.tag_config('rojo', foreground='red')
                 self.chat_texto.config(state='disabled')
             except ValueError:
                 messagebox.showwarning("Advertencia", "Formato incorrecto. Usa: @usuario_destino mensaje")
@@ -161,7 +169,8 @@ class ClienteChat:
 
             # Mostrar el mensaje en el chat local
             self.chat_texto.config(state='normal')
-            self.chat_texto.insert(tk.END, f"Tú: {mensaje}\n")
+            self.chat_texto.insert(tk.END, f"Tú: {mensaje}\n", 'negro')
+            self.chat_texto.tag_config('negro', foreground='black')
             self.chat_texto.config(state='disabled')
 
         # Enviar el mensaje al servidor

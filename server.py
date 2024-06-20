@@ -55,7 +55,7 @@ class ServidorChat:
                     datos = json.loads(mensaje)
                     if datos['tipo'] == 'login':
                         if self.autenticar_usuario(datos):
-                            socket_cliente.sendall(json.dumps({"tipo": "login", "estado": "exitoso"}).encode('utf-8'))
+                            socket_cliente.sendall(json.dumps({"tipo": "login", "estado": "exitoso", "nombre": datos['nombre_usuario']}).encode('utf-8'))
                             self.nombres_usuarios[socket_cliente] = datos['nombre_usuario']
                             self.clientes.append(socket_cliente)
                             self.enviar_usuarios_conectados()
