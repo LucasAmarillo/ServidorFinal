@@ -6,13 +6,16 @@ from tkinter import messagebox, scrolledtext
 from PIL import Image, ImageTk
 
 class ClienteChat:
-    def __init__(self, host='127.0.0.1', puerto=5000):
+    def __init__(self, host='190.5.188.55', puerto=5000):
         self.host = host
         self.puerto = puerto
         self.cliente = None
         self.login_exitoso = False
-
         self.ventana = tk.Tk()
+        
+        # Configuración de la ventana al cerrar
+        self.ventana.protocol("WM_DELETE_WINDOW", self.cerrar_aplicacion)
+
         self.ventana.title("Chat Cliente")
         self.ventana.iconbitmap("logo.ico")
         self.ventana.resizable(False, False)
@@ -66,7 +69,10 @@ class ClienteChat:
         self.label_cantidad_usuarios.pack()
 
         self.frame_chat.pack_forget()  # Esconde el frame del chat hasta que el login sea exitoso
-
+    def cerrar_aplicacion(self):
+        if self.cliente:
+            self.cliente.close()  # Cierrar el socket
+        self.ventana.destroy()  # Cierra la ventana principal 
     def conectar(self):
         if self.cliente:
             self.cliente.close()
@@ -135,6 +141,8 @@ class ClienteChat:
             except json.JSONDecodeError as e:
                 print(f"Error al decodificar JSON: {e}")
                 break
+    def obtener_usuarios_conectados(self):
+        return self.lista_usuarios.get(0, tk.END)
 
     def enviar_mensaje(self):
         if not self.login_exitoso:
@@ -145,6 +153,12 @@ class ClienteChat:
         if mensaje.startswith("@"):
             try:
                 destino, mensaje_privado = mensaje[1:].split(" ", 1)
+
+                usuario_conectados = self.obtener_usuarios_conectados()
+
+                if destino not in usuario_conectados:
+                    messagebox.showwarning("Advertencia", f"El usuario {destino} no disponible.")
+                    return
                 datos = {
                     "tipo": "privado",
                     "origen": self.entry_usuario.get(),
