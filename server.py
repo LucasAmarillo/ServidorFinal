@@ -37,15 +37,23 @@ class ServidorChat:
         return usuario is not None
 
  
-    def registrar(self,datos):
+    def registrar(self, datos):
         conexion = sqlite3.connect('usuarios.db')
         cursor = conexion.cursor()
-        
-        cursor.execute("INSERT INTO usuarios (nombre_usuario,contrasena) values (?,?)", (datos['nombre_usuario'], datos['contrasena']))
+
+        # Verificar si el nombre de usuario ya existe
+        cursor.execute("SELECT * FROM usuarios WHERE nombre_usuario = ?", (datos['nombre_usuario'],))
+        usuario = cursor.fetchone()
+
+        if usuario:
+            conexion.close()
+            return False  # El nombre de usuario ya está en uso
+
+        cursor.execute("INSERT INTO usuarios (nombre_usuario, contrasena) VALUES (?, ?)", (datos['nombre_usuario'], datos['contrasena']))
         conexion.commit()
-        
+
         conexion.close()
-        return usuario is not None
+        return True  # Registro exitoso
 
     def manejar_cliente(self, socket_cliente):
         while True:
@@ -69,8 +77,7 @@ class ServidorChat:
                         if self.registrar(datos):
                             socket_cliente.sendall(json.dumps({"tipo": "registro", "estado": "exitoso"}).encode('utf-8'))
                         else:
-                            socket_cliente.sendall(json.dumps({"tipo": "registro", "estado": "fallido"}).encode('utf-8'))
-
+                            socket_cliente.sendall(json.dumps({"tipo": "registro", "estado": "fallido", "mensaje": "El nombre de usuario ya está en uso."}).encode('utf-8'))
 
             except:
                 continue
@@ -81,7 +88,7 @@ class ServidorChat:
                 mensaje = socket_cliente.recv(1024).decode('utf-8')
                 if mensaje:
                     datos = json.loads(mensaje)
-                    print(f"Recibido: {datos}")
+                    print(f"Recibido: {datos}")  # Verificación que llegan los mensajes en el seviddor
                     if datos['tipo'] == 'desconectar':
                         self.eliminar(socket_cliente)
                         break
@@ -116,7 +123,7 @@ class ServidorChat:
                         datos['destino'] = self.nombres_usuarios[datos['origen']]
                         self.nombres_usuarios[datos['origen']].sendall(json.dumps(datos).encode('utf-8'))
                 except:
-                    print("Error al enviar mensaje privado.")
+                    pass
 
     def eliminar(self, socket_cliente):
         if socket_cliente in self.clientes:
